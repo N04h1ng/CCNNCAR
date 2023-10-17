@@ -1,0 +1,100 @@
+
+#### general settings
+
+name: 01_CAETAD_JPEG_x2_MIT4k
+use_tb_logger: true
+model: CAETAD
+scale: 2
+gpu_ids: [0]
+
+
+#### datasets
+
+datasets:
+  train:
+    name: MIT4k
+    mode: LQGT
+    dataroot_GT_amp: 'D:/code/machine learning/Carcgh/MIT/MIT_train/MIT_test_HR/amp'
+    dataroot_GT_phs: 'D:/code/machine learning/Carcgh/MIT/MIT_train/MIT_test_HR/phs' # path to training HR images
+    dataroot_LQ_amp: 'D:/code/machine learning/Carcgh/MIT/MIT_train/MIT_test_LR_bicubic/amp_LR'
+    dataroot_LQ_phs: 'D:/code/machine learning/Carcgh/MIT/MIT_train/MIT_test_LR_bicubic/phs_LR' # path to training reference LR images, not necessary, if not provided, LR images will be generated in dataloader
+
+    use_shuffle: true
+    n_workers: 0  # per GPU
+    batch_size: 2
+    GT_size: 384
+    use_flip: true
+    use_rot: true
+    color: RGB
+
+  val:
+    name: val_MIT4k
+    mode: LQGT
+    dataroot_GT_amp: 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_HR/amp'
+    dataroot_GT_phs: 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_HR/phs' # path to training HR images
+    dataroot_LQ_amp: 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_LR_bicubic/amp_LR'
+    dataroot_LQ_phs: 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_LR_bicubic/phs_LR' # path to training reference LR images, not necessary, if not provided, LR images will be generated in dataloader
+
+
+#### network structures
+
+network:
+  in_nc: 3
+  out_nc: 3
+  scale: 2
+  init: xavier
+
+#### path
+
+path:
+  pretrain_model: ~
+  strict_load: true
+  resume_state: ~
+  val_images: 'D:/code/machine learning/CCNNCAR/val_images'
+
+
+#### training settings: learning rate scheme, loss
+
+train:
+  use_diffcomp: true
+  use_realcomp: true
+  comp_format: JPEG
+  comp_quality: 75
+  lr: !!float 2e-4
+  beta1: 0.9
+  beta2: 0.999
+  niter: 4950
+  warmup_iter: -1  # no warm up
+
+  lr_scheme: MultiStepLR
+  lr_steps: [1000, 2000, 3000, 4000]
+  lr_gamma: 0.5
+
+  pixel_criterion_forw: l2
+  pixel_criterion_back: l1
+
+  manual_seed: 10
+
+  val_freq: !!float 1e2
+
+  lambda_fit_forw: 4.
+  lambda_rec_back: 1
+  weight_decay: !!float 1e-5
+  gradient_clipping: 10
+
+
+#### logger
+
+logger:
+  print_freq: 100
+  save_checkpoint_freq: !!float 5e3
+
+
+hologram_params:
+  wavelengths: [0.000450, 0.000520, 0.000638]  # laser wavelengths in BGR order
+  pitch: !!float 8e3                                           # hologram pitch
+  res_h: 384                                 # dataset image height
+  res_w: 384                                 # dataset image width
+  pad: False
+  channels: 3                               # the channels of image
+  
