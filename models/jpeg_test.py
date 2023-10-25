@@ -130,6 +130,7 @@ class dct_8x8(nn.Module):
         
     def forward(self, image):
         #image = image - 128
+        image = image.float()
         result = self.scale * torch.tensordot(image, self.tensor, dims=2)
         result.view(image.shape)
         return result
@@ -201,8 +202,8 @@ class compress_jpeg(nn.Module):
         self.y_quantize = y_quantize(rounding=rounding, factor=factor)
         
     def forward(self, image):
-        #y, cb, cr = self.l1(image*255) # modify 
-        y, cb ,cr = self.l1(image)
+        y, cb, cr = self.l1(image*255) # modify 
+        #y, cb ,cr = self.l1(image)
 
         # y, cb, cr = result[:,:,:,0], result[:,:,:,1], result[:,:,:,2]
         components = {'y': y, 'cb': cb, 'cr': cr}
@@ -272,8 +273,8 @@ class idct_8x8(nn.Module):
     def forward(self, image):
         
         image = image * self.alpha
-        # result = 0.25 * torch.tensordot(image, self.tensor, dims=2) + 128
-        result = 0.25 * torch.tensordot(image, self.tensor, dims=2)
+        result = 0.25 * torch.tensordot(image, self.tensor, dims=2) + 128
+        #result = 0.25 * torch.tensordot(image, self.tensor, dims=2)
         result.view(image.shape)
         return result
 
@@ -342,6 +343,7 @@ class ycbcr_to_rgb_jpeg(nn.Module):
         self.matrix = nn.Parameter(torch.from_numpy(matrix))
 
     def forward(self, image):
+        image = image.float()
         result = torch.tensordot(image + self.shift, self.matrix, dims=1)
         #result = torch.from_numpy(result)
         result.view(image.shape)
@@ -395,9 +397,9 @@ class decompress_jpeg(nn.Module):
         # image = torch.cat([components['y'].unsqueeze(3), components['cb'].unsqueeze(3), components['cr'].unsqueeze(3)], dim=3) 
         image = self.colors(image)
 
-        # image = torch.min(255*torch.ones_like(image),
-        #                   torch.max(torch.zeros_like(image), image))
-        # return image/255
-        image = torch.min(np.sqrt(2) * torch.ones_like(image),
-                          torch.max(-np.sqrt(2)*torch.ones_like(image), image))
-        return image
+        image = torch.min(255*torch.ones_like(image),
+                          torch.max(torch.zeros_like(image), image))
+        return image/255
+        # image = torch.min(np.sqrt(2) * torch.ones_like(image),
+        #                   torch.max(-np.sqrt(2)*torch.ones_like(image), image))
+        # return image

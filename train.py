@@ -40,7 +40,8 @@ else :
     wavelengths = np.transpose(wavelengths,(2,0,1))
 
 Quan = Quantization()
-diffcomp = DiffJPEG(differentiable=True, quality=75).cuda()
+diffcomp1 = DiffJPEG(differentiable=True, quality=75).cuda()
+diffcomp2 = DiffJPEG(differentiable=True, quality=65).cuda()
 
 hologram_params = {
         "wavelengths" : wavelengths,  # laser wavelengths in BGR order
@@ -148,8 +149,8 @@ for k in trange(train_params["epoch"]):
         holo_dr = net.encode(hr_in)
         holo_q_real = Quan(holo_dr.real)
         holo_q_imag = Quan(holo_dr.imag)
-        holo_j_real = diffcomp(holo_q_real)
-        holo_j_imag = diffcomp(holo_q_imag)
+        holo_j_real = diffcomp1(holo_q_real)
+        holo_j_imag = diffcomp2(holo_q_imag)
         holo_j = torch.complex(holo_j_real,holo_j_imag)
         holo_sr = net.decode(holo_j)
         
@@ -237,8 +238,8 @@ for k in trange(train_params["epoch"]):
             holo_dr = net.encode(hr_in)
             holo_q_real = Quan(holo_dr.real)
             holo_q_imag = Quan(holo_dr.imag)
-            holo_j_real = diffcomp(holo_q_real)
-            holo_j_imag = diffcomp(holo_q_imag)
+            holo_j_real = diffcomp1(holo_q_real)
+            holo_j_imag = diffcomp2(holo_q_imag)
             holo_j = torch.complex(holo_j_real,holo_j_imag)
             holo_sr = net.decode(holo_j)
 
@@ -284,7 +285,7 @@ for k in trange(train_params["epoch"]):
             if train_params["single_channel"]:
                 b = 'D:\\code\\machine learning\\CCNNCAR\\output\\single_channel' + method+str(c)
             else :
-                b = 'D:\\code\\machine learning\\CCNNCAR\\output\\' + method+str(c)
+                b = 'D:\\code\\machine learning\\CCNNCAR\\output\\jpeg\\' + method+str(c)
             imgpath = b + '.png'
             recon_amp = torch.squeeze(sr_recon_amp)
             recon_amp=recon_amp.detach().cpu().numpy()

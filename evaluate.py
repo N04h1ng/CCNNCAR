@@ -9,17 +9,30 @@ import time
 from scipy import io
 import models.modules.model as model
 from utils.propagation_ASM import *
-from utils.load import dataset
+from data.dataset import dataset
 from torch.utils.data import DataLoader, Dataset, random_split
 from config import config
 import pytorch_ssim
-
+from models.modules.quantization import Quantization
+import argparse
+import options.options as option
+from models.jpeg_test import DiffJPEG
+from models.compressor_test import REALCOMP
 
 def psnr(img1, img2):
     mse = np.mean((img1/1.0-img2/1.0)**2)
     psnr1=20*math.log10(1/math.sqrt(mse))
     return psnr1
 
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-opt', type=str, help='Path to option YMAL file.')
+parser.add_argument('--launcher', choices=['none', 'pytorch'], default='none',
+                    help='job launcher')
+parser.add_argument('--local_rank', type=int, default=0) 
+args = parser.parse_args()
+opt = option.parse(args.opt, is_train=True)
 
 train_params = {
         "epoch" : 130, 
@@ -51,7 +64,7 @@ Hbackward = propagation_ASM(torch.empty(1, 1, hologram_params["res_w"], hologram
                             wavelength=hologram_params["wavelengths"],
                             z = -0.02, linear_conv=hologram_params["pad"], return_H=True)
 Hbackward = Hbackward.cuda()
-method = 'caetadmix_po'
+method = 'caetad'
 if method == 'caetad':
     net = model.CAETAD()
 elif method == 'caetadmix':
@@ -71,24 +84,27 @@ criterion2 = criterion2.cuda()
 #optvars = [{'params': net.parameters()}]
 #optimizer = torch.optim.Adam(optvars,lr=lr)
 
-hr_amp_img_path = 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_HR/amp'
-lr_amp_img_path = 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_LR_bicubic/amp_LR'
+# hr_amp_img_path = 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_HR/amp'
+# lr_amp_img_path = 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_LR_bicubic/amp_LR'
 
-hr_phs_img_path = 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_HR/phs'
-lr_phs_img_path = 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_LR_bicubic/phs_LR'
+# hr_phs_img_path = 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_HR/phs'
+# lr_phs_img_path = 'D:/code/machine learning/Carcgh/MIT/MIT_test/MIT_test_LR_bicubic/phs_LR'
 
 transform = lambda x : np.transpose(x,(2,0,1))
-total_dataset = dataset(hr_amp_img_path, hr_phs_img_path, lr_amp_img_path, lr_phs_img_path, transform)
-total_num = len(total_dataset)
-train_num = total_num // 10 * 9
-valid_num = total_num - train_num
-train_dataset, valid_dataset = random_split(total_dataset, [train_num, valid_num], generator=torch.Generator().manual_seed(42))
+total_dataset = dataset(opt['datasets']['val'], transform)
+# total_num = len(total_dataset)
+# train_num = total_num // 10 * 9
+# valid_num = total_num - train_num
+# train_dataset, valid_dataset = random_split(total_dataset, [train_num, valid_num], generator=torch.Generator().manual_seed(42))
 #train_dataloader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 #valid_dataloader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
 dataloader = DataLoader(total_dataset,batch_size=1, shuffle=True)
+Quan = Quantization()
+diffcomp1 = DiffJPEG(differentiable=True, quality=75).cuda()
+diffcomp2 = DiffJPEG(differentiable=True, quality=65).cuda()
+realcomp = REALCOMP()
 
-
-net.load_state_dict(torch.load("D:\\code\machine learning\\CCNNCAR\\cloud\\2\\"+method+".pth"))
+net.load_state_dict(torch.load("D:\\code\\machine learning\\CCNNCAR\\"+method+".pth"))
 
 # 禁用自动求导
 with torch.no_grad():
@@ -99,34 +115,43 @@ with torch.no_grad():
     ssim_values = 0
     psnr_values = 0
     for i_batch, batch_data in enumerate(dataloader):
-            amp_hr = batch_data[0]
-            phs_hr = batch_data[1]
-            amp_lr = batch_data[2]
-            phs_lr = batch_data[3]   
+            # amp_hr = batch_data[0]
+            # phs_hr = batch_data[1]
+            # amp_lr = batch_data[2]
+            # phs_lr = batch_data[3]   
 
-            amp_hr = amp_hr.float()
-            phs_hr = phs_hr.float()
-            #amp_lr = amp_lr.float()
-            #phs_lr = phs_lr.float()
+            # amp_hr = amp_hr.float()
+            # phs_hr = phs_hr.float()
+            # #amp_lr = amp_lr.float()
+            # #phs_lr = phs_lr.float()
 
-            amp_hr = amp_hr.cuda() 
-            phs_hr = phs_hr.cuda()
-            #amp_lr = amp_lr.cuda()
-            #phs_lr = phs_lr.cuda()
+            # amp_hr = amp_hr.cuda() 
+            # phs_hr = phs_hr.cuda()
+            # #amp_lr = amp_lr.cuda()
+            # #phs_lr = phs_lr.cuda()
 
+            hr_in = batch_data['GT'].cuda()
 
-            if method == 'caetad' or 'caetadmix':
-                lr_in = torch.complex(amp_hr * torch.cos((phs_hr-0.5) * 2.0 * np.pi), 
-                            amp_hr * torch.sin((phs_hr-0.5) * 2.0 * np.pi)
-                )
-            elif method == 'aetad' or 'aetadmix':
-                lr_in = torch.complex(amp_hr,phs_hr)
+            # if method == 'caetad' or 'caetadmix':
+            #     lr_in = torch.complex(amp_hr * torch.cos((phs_hr-0.5) * 2.0 * np.pi), 
+            #                 amp_hr * torch.sin((phs_hr-0.5) * 2.0 * np.pi)
+            #     )
+            # elif method == 'aetad' or 'aetadmix':
+            #     lr_in = torch.complex(amp_hr,phs_hr)
             
-            holo_hr = torch.complex(amp_hr * torch.cos((phs_hr-0.5) * 2.0 * np.pi), 
-                        amp_hr * torch.sin((phs_hr-0.5) * 2.0 * np.pi)
-                        )
+            # holo_hr = torch.complex(amp_hr * torch.cos((phs_hr-0.5) * 2.0 * np.pi), 
+            #             amp_hr * torch.sin((phs_hr-0.5) * 2.0 * np.pi)
+            #             )
             
-            holo_sr = net(lr_in)
+            holo_dr = net.encode(hr_in)
+            holo_q_real = Quan(holo_dr.real)
+            holo_q_imag = Quan(holo_dr.imag)
+            holo_j_real = diffcomp1(holo_q_real)
+            holo_j_imag = diffcomp2(holo_q_imag)
+            #holo_j_real = realcomp(holo_q_real)
+            #holo_j_imag = realcomp(holo_q_imag)
+            holo_j = torch.complex(holo_j_real,holo_j_imag)
+            holo_sr = net.decode(holo_j)
 
             if method == 'caetad':
                 sr_recon_complex = propagation_ASM(u_in=holo_sr, z=-0.02, linear_conv=hologram_params["pad"],
@@ -159,7 +184,7 @@ with torch.no_grad():
                                                 precomped_H=Hbackward)
                 sr_recon_amp = torch.abs(sr_recon_complex)
             
-            hr_recon_complex = propagation_ASM(u_in=holo_hr, z=-0.02, linear_conv=hologram_params["pad"],
+            hr_recon_complex = propagation_ASM(u_in=hr_in, z=-0.02, linear_conv=hologram_params["pad"],
                                             feature_size=hologram_params["pitch"],
                                             wavelength=hologram_params["wavelengths"],
                                             precomped_H=Hbackward)
