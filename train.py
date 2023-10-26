@@ -41,7 +41,7 @@ else :
 
 Quan = Quantization()
 diffcomp1 = DiffJPEG(differentiable=True, quality=75).cuda()
-diffcomp2 = DiffJPEG(differentiable=True, quality=65).cuda()
+diffcomp2 = DiffJPEG(differentiable=True, quality=75).cuda()
 
 hologram_params = {
         "wavelengths" : wavelengths,  # laser wavelengths in BGR order
@@ -285,7 +285,7 @@ for k in trange(train_params["epoch"]):
             if train_params["single_channel"]:
                 b = 'D:\\code\\machine learning\\CCNNCAR\\output\\single_channel' + method+str(c)
             else :
-                b = 'D:\\code\\machine learning\\CCNNCAR\\output\\jpeg\\' + method+str(c)
+                b = opt['path']['save_images'] + method+str(c)
             imgpath = b + '.png'
             recon_amp = torch.squeeze(sr_recon_amp)
             recon_amp=recon_amp.detach().cpu().numpy()

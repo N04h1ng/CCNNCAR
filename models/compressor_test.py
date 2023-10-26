@@ -11,7 +11,7 @@ class REALCOMP:
         self.format = format
         self.quality = quality
 
-    def __call__(self, tensors, out_type=np.uint8, min_max=(-np.sqrt(2), np.sqrt(2))):
+    def __call__(self, tensors, out_type=np.uint8, min_max=(0, 1)):
         results = []
         for tensor in tensors:
             tensor = tensor.squeeze().float().cpu().detach().clamp_(*min_max) # clamp

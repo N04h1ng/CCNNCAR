@@ -51,6 +51,7 @@ path:
   strict_load: true
   resume_state: ~
   val_images: 'D:/code/machine learning/CCNNCAR/val_images'
+  save_images: 'D:/code/machine learning/CCNNCAR/output/jpeg'
 
 
 #### training settings: learning rate scheme, loss

@@ -101,10 +101,12 @@ total_dataset = dataset(opt['datasets']['val'], transform)
 dataloader = DataLoader(total_dataset,batch_size=1, shuffle=True)
 Quan = Quantization()
 diffcomp1 = DiffJPEG(differentiable=True, quality=75).cuda()
-diffcomp2 = DiffJPEG(differentiable=True, quality=65).cuda()
-realcomp = REALCOMP()
+diffcomp2 = DiffJPEG(differentiable=True, quality=75).cuda()
+realcomp1 = REALCOMP(quality=75)
+realcomp2 = REALCOMP(quality=75)
 
-net.load_state_dict(torch.load("D:\\code\\machine learning\\CCNNCAR\\"+method+".pth"))
+net.load_state_dict(torch.load("D:\\code\\machine learning\\backup\cloud\\3\\"+method+".pth"))
+#net.load_state_dict(torch.load("D:\\code\\machine learning\\CCNNCAR\\"+method+".pth"))
 
 # 禁用自动求导
 with torch.no_grad():
@@ -144,14 +146,15 @@ with torch.no_grad():
             #             )
             
             holo_dr = net.encode(hr_in)
-            holo_q_real = Quan(holo_dr.real)
-            holo_q_imag = Quan(holo_dr.imag)
-            holo_j_real = diffcomp1(holo_q_real)
-            holo_j_imag = diffcomp2(holo_q_imag)
-            #holo_j_real = realcomp(holo_q_real)
-            #holo_j_imag = realcomp(holo_q_imag)
-            holo_j = torch.complex(holo_j_real,holo_j_imag)
-            holo_sr = net.decode(holo_j)
+            #holo_q_real = Quan(holo_dr.real)
+            #holo_q_imag = Quan(holo_dr.imag)
+            #holo_j_real = diffcomp1(holo_q_real)
+            #holo_j_imag = diffcomp2(holo_q_imag)
+            #holo_j_real = realcomp1(holo_q_real)
+            #holo_j_imag = realcomp2(holo_q_imag)
+            #holo_j = torch.complex(holo_j_real,holo_j_imag)
+            #holo_sr = net.decode(holo_j)
+            holo_sr = net.decode(holo_dr)
 
             if method == 'caetad':
                 sr_recon_complex = propagation_ASM(u_in=holo_sr, z=-0.02, linear_conv=hologram_params["pad"],

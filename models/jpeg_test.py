@@ -129,8 +129,8 @@ class dct_8x8(nn.Module):
         self.scale = nn.Parameter(torch.from_numpy(np.outer(alpha, alpha) * 0.25).float() )
         
     def forward(self, image):
-        #image = image - 128
-        image = image.float()
+        image = image - 128
+        #image = image.float()
         result = self.scale * torch.tensordot(image, self.tensor, dims=2)
         result.view(image.shape)
         return result
